@@ -45,14 +45,14 @@ func Raw(file string, header bool) ([][]float64, []string, error) {
 			row, _ = strconv.Atoi(strings.TrimSpace(s[11:]))
 
 		} else if strings.HasPrefix(s, "Variables:") {
-			
+
 			for j := 0; j < col; j++ {
 				s, err = r.ReadString('\n')
 				if err != nil || len(s) == 0 {
 					break
 				}
 				ss := strings.Split(s, "\t")
-				vars = append(vars,ss[2])
+				vars = append(vars, ss[2])
 			}
 		} else if strings.HasPrefix(s, "Binary:") {
 			break
