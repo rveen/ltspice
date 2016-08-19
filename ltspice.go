@@ -11,6 +11,9 @@ import (
 	"strings"
 )
 
+// Raw reads an LTSpice raw (binary) file and returns a square matrix
+// with the time in the first column, and data points in the rest.
+// It also returns an array of column names
 func Raw(file string, header bool) ([][]float64, []string, error) {
 
 	var row, col int
@@ -59,7 +62,7 @@ func Raw(file string, header bool) ([][]float64, []string, error) {
 		}
 	}
 
-	// Read the binary part, into an array
+	// Read the binary part into an array
 
 	Ma := make([]float64, row*col)
 
@@ -67,9 +70,6 @@ func Raw(file string, header bool) ([][]float64, []string, error) {
 	M := make([][]float64, col)
 	for i := range M {
 		M[i] = Ma[i*row : (i+1)*row]
-		for j := range M[i] {
-			M[i][j] = 0.0
-		}
 	}
 
 	t := make([]byte, 8)
@@ -77,6 +77,7 @@ func Raw(file string, header bool) ([][]float64, []string, error) {
 
 	for i := 0; i < row; i++ {
 
+		// Read a time stamp (8 bytes floating point)
 		// [!] r.Read()  may not read len(buf) bytes even if there are left.
 		_, err = io.ReadFull(r, t)
 
@@ -86,27 +87,32 @@ func Raw(file string, header bool) ([][]float64, []string, error) {
 		}
 		M[0][i] = toFloat(t)
 
-		for j := 0; j < col-1; j++ {
+		for j := 1; j < col; j++ {
 
+			// Read a data point (4 bytes floating point)
 			_, err = io.ReadFull(r, v)
 
 			if err != nil {
 				log.Println("unexpected end")
 				return nil, nil, err
 			}
-			M[j+1][i] = toFloat32(v)
+			M[j][i] = toFloat32(v)
 		}
 	}
 
 	return M, vars, nil
 }
 
+// toFloat converts an array of 8 bytes to a
+// float64 value.
 func toFloat(bytes []byte) float64 {
 	bits := binary.LittleEndian.Uint64(bytes)
 	float := math.Float64frombits(bits)
 	return float
 }
 
+// toFloat32 converts an array of 4 bytes to a
+// float64 value.
 func toFloat32(bytes []byte) float64 {
 	bits := binary.LittleEndian.Uint32(bytes)
 	float := math.Float32frombits(bits)
