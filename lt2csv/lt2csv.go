@@ -3,9 +3,10 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/GaryBoone/GoStats/stats"
 	"log"
 	"ltspice"
+
+	"github.com/GaryBoone/GoStats/stats"
 )
 
 func main() {
@@ -35,15 +36,13 @@ func main() {
 
 	if header {
 		for j := 1; j < col; j++ {
-		
-		    mean := stats.StatsMean(m[j])
-		    sdev := stats.StatsSampleStandardDeviation(m[j])
-		
-			fmt.Printf("%-20s %30g %30g %30g\n", "'"+vars[j]+"'", mean, sdev, sdev / mean)
-		}
-	}
 
-	if header {
+			mean := stats.StatsMean(m[j])
+			sdev := stats.StatsSampleStandardDeviation(m[j])
+
+			fmt.Printf("%-20s %30g %30g %30g\n", "'"+vars[j]+"'", mean, sdev, sdev/mean)
+		}
+
 		return
 	}
 
