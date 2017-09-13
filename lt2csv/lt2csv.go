@@ -4,9 +4,9 @@ import (
 	"flag"
 	"fmt"
 	"log"
-	"ltspice"
 
 	"github.com/GaryBoone/GoStats/stats"
+	"github.com/rveen/ltspice"
 )
 
 func main() {
