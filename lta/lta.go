@@ -4,20 +4,41 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"math"
+	"strings"
 
 	"github.com/GaryBoone/GoStats/stats"
+	"github.com/atgjack/prob"
 	"github.com/rveen/ltspice"
 )
 
 // lta - LT data analyzer
+//
+// TODO support options measdgt, numdgt
+// TODO support LTSpice XVII format
+
+type Parameter struct {
+	Name   string
+	Max    float64
+	Min    float64
+	Mean   float64
+	StdDev float64
+	Cpk    float64
+	Ppm    float64
+	Good   float64
+}
+
+var Parameters []Parameter
 
 func main() {
 
 	var summary bool
 	var duty int
+	var header bool
 
 	flag.IntVar(&duty, "d", 0, "Calculate duty cycle of the specified column")
 	flag.BoolVar(&summary, "s", false, "Print summary")
+	flag.BoolVar(&header, "v", false, "Print header")
 	flag.Parse()
 
 	file := ""
@@ -25,7 +46,7 @@ func main() {
 		file = flag.Args()[0]
 	}
 
-	m, vars, err := ltspice.Raw(file, false)
+	m, vars, err := ltspice.Raw(file)
 
 	if err != nil {
 		log.Println(err)
@@ -37,14 +58,90 @@ func main() {
 
 	cols := len(m)
 	rows := len(m[0])
+	n := 1.0
+
+	// Calculate number of runs
+	for i := 0; i < rows; i++ {
+		// detect LT runs (time = 0)
+		if i > 0 && m[0][i] == 0 {
+			n++
+			i++
+		}
+	}
+
+	// Correct std.dev for number of samples (c4(n))
+	// c4(n) = sqrt( 2 / (n-1) ) * gamma(n/2) / gamma((n-1)/2)
+	// See https://en.wikipedia.org/wiki/Unbiased_estimation_of_standard_deviation#Bias_correction
+	c4 := math.Sqrt(2.0/(n-1)) * math.Gamma(n/2) / math.Gamma((n-1)/2)
+	log.Println("c4", c4)
+
+	for i := 0; i < cols; i++ {
+		p := Parameter{Name: vars[i], Max: math.NaN(), Min: math.NaN()}
+		if i > 0 {
+			p.Mean = stats.StatsMean(m[i])
+			p.StdDev = stats.StatsSampleStandardDeviation(m[i]) / c4 // This includes Bessel correction (which is ok!)
+		}
+		Parameters = append(Parameters, p)
+	}
+
+	// Does the vars list include any _min or _max ?
+	log.Println("checking for min, max")
+	for i := 1; i < cols; i++ {
+
+		if strings.HasSuffix(vars[i], "_min)") {
+			v := vars[i][0:len(vars[i])-5] + ")"
+
+			j := 1
+			for ; j < cols; j++ {
+				if vars[j] == v {
+					break
+				}
+			}
+			if j > cols {
+				continue
+			}
+
+			v = v[0:len(v)-1] + "_max)"
+
+			k := 1
+			for ; k < cols; k++ {
+				if vars[k] == v {
+					break
+				}
+			}
+			if k > cols {
+				continue
+			}
+			Parameters[j].Min = Parameters[i].Mean
+			Parameters[j].Max = Parameters[k].Mean
+			log.Println(Parameters[j].Name, Parameters[j].Min, Parameters[j].Max)
+		}
+	}
+
+	// For parameters with min,max calculate additional columns
+	for i, p := range Parameters {
+		if !math.IsNaN(p.Max) {
+			log.Println(p.Mean, p.StdDev, p.Max)
+			Parameters[i].Cpk = (p.Max - p.Mean) / (3.0 * p.StdDev)
+			norm, err := prob.NewNormal(p.Mean, p.StdDev)
+			if err != nil {
+				log.Println(err.Error())
+			} else {
+				bad := (1.0 - norm.Cdf(p.Max)) * 2
+				Parameters[i].Good = 1.0 - bad
+				Parameters[i].Ppm = bad * 1e6
+			}
+		}
+	}
 
 	if duty == 0 {
-		for j := 1; j < cols; j++ {
+		if header {
+			fmt.Printf("%-20s %30s %30s %30s %20s %20s %20s %10s\n", "parameter", "mean", "sdev(unbiased)", "min", "max", "cpk", "%ok", "ppm")
+		}
 
-			mean := stats.StatsMean(m[j])
-			sdev := stats.StatsSampleStandardDeviation(m[j])
+		for _, p := range Parameters {
 
-			fmt.Printf("%-20s %30g %30g %30g\n", "'"+vars[j]+"'", mean, sdev, sdev/mean)
+			fmt.Printf("%-20s %30g %30g %30g %20g %20g %20.6f %10.1f\n", "'"+p.Name+"'", p.Mean, p.StdDev, p.Min, p.Max, p.Cpk, p.Good*100.0, p.Ppm)
 		}
 	} else {
 

@@ -21,7 +21,7 @@ func main() {
 		file = flag.Args()[0]
 	}
 
-	m, vars, err := ltspice.Raw(file, header)
+	m, vars, err := ltspice.Raw(file)
 
 	if err != nil {
 		log.Println(err)
@@ -38,7 +38,7 @@ func main() {
 		for j := 1; j < col; j++ {
 
 			mean := stats.StatsMean(m[j])
-			sdev := stats.StatsSampleStandardDeviation(m[j])
+			sdev := stats.StatsSampleStandardDeviation(m[j]) // This includes Bessel correction (which is ok!)
 
 			fmt.Printf("%-20s %30g %30g %30g\n", "'"+vars[j]+"'", mean, sdev, sdev/mean)
 		}

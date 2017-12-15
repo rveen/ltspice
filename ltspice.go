@@ -14,7 +14,10 @@ import (
 // Raw reads an LTSpice raw (binary) file and returns a square matrix
 // with the time in the first column, and data points in the rest.
 // It also returns an array of column names
-func Raw(file string, header bool) ([][]float64, []string, error) {
+//
+// TODO LTspice XVII: fid = fopen(filename, 'rb', 'n', 'UTF16LE');
+//
+func Raw(file string) ([][]float64, []string, error) {
 
 	var row, col int
 	var f *os.File
@@ -34,6 +37,7 @@ func Raw(file string, header bool) ([][]float64, []string, error) {
 	r := bufio.NewReader(f)
 
 	// Read text part
+
 	for {
 
 		s, err := r.ReadString('\n')
@@ -103,16 +107,14 @@ func Raw(file string, header bool) ([][]float64, []string, error) {
 	return M, vars, nil
 }
 
-// toFloat converts an array of 8 bytes to a
-// float64 value.
+// toFloat converts an array of 8 bytes to a float64 value.
 func toFloat(bytes []byte) float64 {
 	bits := binary.LittleEndian.Uint64(bytes)
 	float := math.Float64frombits(bits)
 	return float
 }
 
-// toFloat32 converts an array of 4 bytes to a
-// float64 value.
+// toFloat32 converts an array of 4 bytes to a float64 value.
 func toFloat32(bytes []byte) float64 {
 	bits := binary.LittleEndian.Uint32(bytes)
 	float := math.Float32frombits(bits)
