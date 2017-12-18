@@ -53,7 +53,7 @@ func main() {
 	}
 
 	if m == nil {
-		log.Println("null matrix")
+		log.Println("no data matrix found")
 	}
 
 	cols := len(m)
@@ -62,7 +62,7 @@ func main() {
 
 	// Calculate number of runs
 	for i := 0; i < rows; i++ {
-		// detect LT runs (time = 0)
+		// detect LT runs (time == 0)
 		if i > 0 && m[0][i] == 0 {
 			n++
 			i++
@@ -73,7 +73,6 @@ func main() {
 	// c4(n) = sqrt( 2 / (n-1) ) * gamma(n/2) / gamma((n-1)/2)
 	// See https://en.wikipedia.org/wiki/Unbiased_estimation_of_standard_deviation#Bias_correction
 	c4 := math.Sqrt(2.0/(n-1)) * math.Gamma(n/2) / math.Gamma((n-1)/2)
-	log.Println("c4", c4)
 
 	for i := 0; i < cols; i++ {
 		p := Parameter{Name: vars[i], Max: math.NaN(), Min: math.NaN()}
@@ -85,7 +84,7 @@ func main() {
 	}
 
 	// Does the vars list include any _min or _max ?
-	log.Println("checking for min, max")
+
 	for i := 1; i < cols; i++ {
 
 		if strings.HasSuffix(vars[i], "_min)") {
@@ -139,7 +138,11 @@ func main() {
 			fmt.Printf("%-20s %30s %30s %30s %20s %20s %20s %10s\n", "parameter", "mean", "sdev(unbiased)", "min", "max", "cpk", "%ok", "ppm")
 		}
 
-		for _, p := range Parameters {
+		for i, p := range Parameters {
+
+			if i == 0 {
+				continue
+			}
 
 			fmt.Printf("%-20s %30g %30g %30g %20g %20g %20.6f %10.1f\n", "'"+p.Name+"'", p.Mean, p.StdDev, p.Min, p.Max, p.Cpk, p.Good*100.0, p.Ppm)
 		}
