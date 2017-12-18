@@ -14,6 +14,9 @@ written by LTSpice to the 'raw' file, the following values are calculated:
 - % good: how many parts are expected to be within the specified tolerances during production and operation.
 - ppm: how many parts in a million are expected to be out of the specified tolerances during production and operation.
 
+The last 3 columns are based on the assumption that the values of the variable
+follow a normal (Gaussian) distribution.
+
 The RAW file can be in uncompressed LTSpice IV or XVII formats, with single or double
 precision data points (.numcfg higher than 6 produces double precision values).
 
