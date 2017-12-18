@@ -69,10 +69,18 @@ func main() {
 		}
 	}
 
+	log.Println("runs", n)
+
 	// Correct std.dev for number of samples (c4(n))
 	// c4(n) = sqrt( 2 / (n-1) ) * gamma(n/2) / gamma((n-1)/2)
 	// See https://en.wikipedia.org/wiki/Unbiased_estimation_of_standard_deviation#Bias_correction
-	c4 := math.Sqrt(2.0/(n-1)) * math.Gamma(n/2) / math.Gamma((n-1)/2)
+	c4 := 0.0
+	if n > 100 {
+		c4 = 4 * (n - 1) / (4*n - 3)
+	} else {
+		c4 = math.Sqrt(2.0/(n-1)) * math.Gamma(n/2) / math.Gamma((n-1)/2)
+	}
+	log.Println("c4", c4)
 
 	for i := 0; i < cols; i++ {
 		p := Parameter{Name: vars[i], Max: math.NaN(), Min: math.NaN()}
