@@ -8,7 +8,7 @@ Produces summary results, mainly for use in worst case analysis. For each variab
 written by LTSpice to the 'raw' file, the following values are calculated:
 
 - Mean
-- Standard deviation (unbiased), corrected for the number of runs by the c4(n) factor [1]
+- Standard deviation (unbiased), corrected for the number of runs by the c4(n) factor [1].
 - Min, Max: these values are derived from special variables of the form variable_max and variable_min, if present. If min and max are present, the Cpk, % good and ppm columns are calculated.
 - Cpk, the process capability: min of ( (Max - Mean) / 3σ, (Mean - Min) / 3σ )
 - % good: how many parts are expected to be within the specified tolerances during production and operation.
@@ -21,3 +21,8 @@ The RAW file can be in uncompressed LTSpice IV or XVII formats, with single or d
 precision data points (.numcfg higher than 6 produces double precision values).
 
 [1] https://en.wikipedia.org/wiki/Unbiased_estimation_of_standard_deviation#Bias_correction
+
+### Possible improvements
+
+The current implementation is useful only for DC signals. The analysis
+could be extended to AC signals (RMS, frequency, duty cycle).
