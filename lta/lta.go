@@ -30,15 +30,22 @@ type Parameter struct {
 
 var Parameters []Parameter
 
+var upperLimit = 0.0
+var lowerLimit = 0.0
+
 func main() {
 
 	var summary bool
 	var duty int
 	var header bool
+	var hist int
 
 	flag.IntVar(&duty, "d", 0, "Calculate duty cycle of the specified column")
+	flag.IntVar(&hist, "hist", 0, "Generate histogram (hist.svg)")
 	flag.BoolVar(&summary, "s", false, "Print summary")
 	flag.BoolVar(&header, "v", false, "Print header")
+	flag.Float64Var(&upperLimit, "max", 0.0, "Establish the upper limit of the parameter under study")
+	flag.Float64Var(&lowerLimit, "min", 0.0, "Establish the lower limit of the parameter under study")
 	flag.Parse()
 
 	file := ""
@@ -141,6 +148,11 @@ func main() {
 		}
 	}
 
+	if hist > 0 {
+		histogram(m[hist], Parameters[hist])
+		return
+	}
+
 	if duty == 0 {
 		if header {
 			fmt.Printf("%-20s %30s %30s %30s %20s %20s %20s %10s\n", "parameter", "mean", "sdev(unbiased)", "min", "max", "cpk", "%ok", "ppm")
@@ -190,11 +202,22 @@ func main() {
 		m, _ := Dutycycle(m[duty][ni:nf], m[0][ni:nf], mid)
 		dcs = append(dcs, m)
 
-		if summary {
-			mean := stats.StatsMean(dcs)
-			max = stats.StatsMax(dcs)
-			min = stats.StatsMin(dcs)
-			fmt.Printf("mean %f, min %f, max %f\n", mean, min, max)
+		//if summary {
+		mean := stats.StatsMean(dcs)
+		max = stats.StatsMax(dcs)
+		min = stats.StatsMin(dcs)
+		sdev := stats.StatsSampleStandardDeviation(dcs) / c4
+		fmt.Printf("mean, min, max, sdev, cpk, ok, ppm\n")
+
+		cpk := (upperLimit - mean) / (3.0 * sdev)
+		norm, err := prob.NewNormal(mean, sdev)
+		if err != nil {
+			log.Println(err.Error())
+		} else {
+			bad := (1.0 - norm.Cdf(upperLimit)) * 2
+			good := 1.0 - bad
+			ppm := bad * 1e6
+			fmt.Printf("%f, %f, %f, %f, %f, %f, %f\n", mean, lowerLimit, upperLimit, sdev, cpk, good*100.0, ppm)
 		}
 
 	}
@@ -302,7 +325,73 @@ func Dutycycle(a []float64, t []float64, mid float64) (float64, float64) {
 	mean = stats.StatsMean(dcc)
 	std = stats.StatsSampleStandardDeviation(dcc)
 
-	fmt.Printf("%f, %f\n", mean, std)
+	// fmt.Printf("%f, %f\n", mean, std)
 
 	return mean, std
+}
+
+type V struct {
+	vs []float64
+}
+
+func (v V) Len() int {
+	return len(v.vs)
+}
+
+func (v V) Value(i int) float64 {
+	return v.vs[i]
+}
+
+func histogram(v []float64, p Parameter) {
+
+	// n is the number of bars
+	n := 50.0
+
+	// width of bars
+	w := 500 / int(n)
+
+	min := stats.StatsMin(v)
+	max := stats.StatsMax(v)
+
+	if !math.IsNaN(p.Max) {
+		if p.Max > max {
+			max = p.Max
+		}
+		if p.Min < min {
+			min = p.Min
+		}
+	}
+
+	h := make([]float64, int(n)+1)
+	step := (max - min) / n
+
+	// log.Printf("%f bins, min %f, max %f, step %f\n", n, min, max, step)
+
+	for i := 0; i < len(v); i++ {
+		e := (v[i] - min) / step
+		// log.Println(i, v[i], e)
+		h[int(e)]++
+	}
+
+	hmax := stats.StatsMax(h)
+	for i := 0; i < len(h); i++ {
+		h[i] /= hmax
+
+	}
+
+	for i := 0; i < int(n); i++ {
+		//fmt.Println(h[i])
+	}
+
+	fmt.Println(`<?xml version="1.0"?><svg xmlns="http://www.w3.org/2000/svg" width="520" height="510" viewBox="0,0,520,510"><desc>R SVG Plot!</desc><rect width="100%" height="100%" style="fill:#FFFFFF"/>`)
+	y0 := 490
+	x1 := 10
+	for i := 0; i < int(n); i++ {
+		y1 := int(490 - h[i]*480)
+		fmt.Printf("<polygon points='%d,%d %d,%d %d,%d, %d,%d' style='stroke-width:1;stroke:#999;fill:#ADD8E6;stroke-opacity:1.000000;fill-opacity:1.000000' />\n", x1, y0, x1, y1, x1+w, y1, x1+w, y0)
+		x1 += w
+	}
+	fmt.Printf("<text x='250' y='505' text-anchor='middle' alignment-baseline='bottom' style='font-size:14; font-family: arial'>min=%f, max=%f</text>", min, max)
+	//fmt.Printf("<text x='490' y='500' text-anchor='left' alignment-baseline='bottom' style='font-size:12; font-family: arial'>%f</text>", max)
+	fmt.Println("</svg>")
 }
