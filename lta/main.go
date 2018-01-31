@@ -164,7 +164,7 @@ func main() {
 				continue
 			}
 
-			fmt.Printf("%-20s %30g %30g %30g %20g %20g %20.6f %10.1f\n", "'"+p.Name+"'", p.Mean, p.StdDev, p.Min, p.Max, p.Cpk, p.Good*100.0, p.Ppm)
+			fmt.Printf("%3d %-20s %30g %30g %30g %20g %20g %20.6f %10.1f\n", i, "'"+p.Name+"'", p.Mean, p.StdDev, p.Min, p.Max, p.Cpk, p.Good*100.0, p.Ppm)
 		}
 	} else {
 
