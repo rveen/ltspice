@@ -18,14 +18,16 @@ import (
 // TODO support LTSpice XVII format
 
 type Parameter struct {
-	Name   string
-	Max    float64
-	Min    float64
-	Mean   float64
-	StdDev float64
-	Cpk    float64
-	Ppm    float64
-	Good   float64
+	Name    string
+	Max     float64
+	Min     float64
+	Mean    float64
+	StdDev  float64
+	Cpk     float64
+	Ppm     float64
+	Good    float64
+	MaxHere float64
+	MinHere float64
 }
 
 var Parameters []Parameter
@@ -93,6 +95,8 @@ func main() {
 		p := Parameter{Name: vars[i], Max: math.NaN(), Min: math.NaN()}
 		if i > 0 {
 			p.Mean = stats.StatsMean(m[i])
+			p.MaxHere = stats.StatsMax(m[i])
+			p.MinHere = stats.StatsMin(m[i])
 			p.StdDev = stats.StatsSampleStandardDeviation(m[i]) / c4 // This includes Bessel correction (which is ok!)
 		}
 		Parameters = append(Parameters, p)
@@ -155,7 +159,7 @@ func main() {
 
 	if duty == 0 {
 		if header {
-			fmt.Printf("%-20s %30s %30s %30s %20s %20s %20s %10s\n", "parameter", "mean", "sdev(unbiased)", "min", "max", "cpk", "%ok", "ppm")
+			fmt.Printf("%-20s %30s %30s %30s %30s %30s %20s %20s %20s %10s\n", "parameter", "mean", "sdev(unbiased)", "min(found)", "max(found)", "min", "max", "cpk", "%ok", "ppm")
 		}
 
 		for i, p := range Parameters {
@@ -164,7 +168,7 @@ func main() {
 				continue
 			}
 
-			fmt.Printf("%3d %-20s %30g %30g %30g %20g %20g %20.6f %10.1f\n", i, "'"+p.Name+"'", p.Mean, p.StdDev, p.Min, p.Max, p.Cpk, p.Good*100.0, p.Ppm)
+			fmt.Printf("%3d %-20s %30g %30g %30g %30g %30g %20g %20g %20.6f %10.1f\n", i, "'"+p.Name+"'", p.Mean, p.StdDev, p.MinHere, p.MaxHere, p.Min, p.Max, p.Cpk, p.Good*100.0, p.Ppm)
 		}
 	} else {
 
