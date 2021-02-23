@@ -18,16 +18,18 @@ import (
 // TODO support LTSpice XVII format
 
 type Parameter struct {
-	Name    string
-	Max     float64
-	Min     float64
-	Mean    float64
-	StdDev  float64
-	Cpk     float64
-	Ppm     float64
-	Good    float64
-	MaxHere float64
-	MinHere float64
+	Name     string
+	Max      float64
+	Min      float64
+	Mean     float64
+	StdDev   float64
+	Cpk      float64
+	Ppm      float64
+	Good     float64
+	MaxHere  float64
+	MinHere  float64
+	MaxCount int
+	MinCount int
 }
 
 var Parameters []Parameter
@@ -112,29 +114,28 @@ func main() {
 			j := 1
 			for ; j < cols; j++ {
 				if vars[j] == v {
+					Parameters[j].Min = Parameters[i].Mean
 					break
 				}
 			}
-			if j > cols {
-				continue
-			}
+			log.Println("Min", Parameters[j].Name, Parameters[j].Min)
+		}
 
-			v = v[0:len(v)-1] + "_max)"
+		if strings.HasSuffix(vars[i], "_max)") {
+			v := vars[i][0:len(vars[i])-5] + ")"
 
-			k := 1
-			for ; k < cols; k++ {
-				if vars[k] == v {
+			j := 1
+			for ; j < cols; j++ {
+				if vars[j] == v {
+					Parameters[j].Max = Parameters[i].Mean
 					break
 				}
 			}
-			if k > cols {
-				continue
-			}
-			Parameters[j].Min = Parameters[i].Mean
-			Parameters[j].Max = Parameters[k].Mean
-			log.Println(Parameters[j].Name, Parameters[j].Min, Parameters[j].Max)
+			log.Println("Max", Parameters[j].Name, Parameters[j].Max)
 		}
 	}
+
+	log.Println("Ntotal", rows)
 
 	// For parameters with min,max calculate additional columns
 	for i, p := range Parameters {
@@ -149,6 +150,8 @@ func main() {
 				Parameters[i].Good = 1.0 - bad
 				Parameters[i].Ppm = bad * 1e6
 			}
+			Parameters[i].MaxCount = maxcount(m[i], p.Max)
+			Parameters[i].MinCount = mincount(m[i], p.Min)
 		}
 	}
 
@@ -159,7 +162,7 @@ func main() {
 
 	if duty == 0 {
 		if header {
-			fmt.Printf("%-20s %30s %30s %30s %30s %30s %20s %20s %20s %10s\n", "parameter", "mean", "sdev(unbiased)", "min(found)", "max(found)", "min", "max", "cpk", "%ok", "ppm")
+			fmt.Printf("%-20s %30s %30s %30s %30s %30s %20s %20s %20s %10s %10s %10s\n", "parameter", "mean", "sdev(unbiased)", "min(found)", "max(found)", "min", "max", "cpk", "%ok", "ppm", "Nmax", "Nmin")
 		}
 
 		for i, p := range Parameters {
@@ -168,7 +171,7 @@ func main() {
 				continue
 			}
 
-			fmt.Printf("%3d %-20s %30g %30g %30g %30g %30g %20g %20g %20.6f %10.1f\n", i, "'"+p.Name+"'", p.Mean, p.StdDev, p.MinHere, p.MaxHere, p.Min, p.Max, p.Cpk, p.Good*100.0, p.Ppm)
+			fmt.Printf("%3d %-20s %30g %30g %30g %30g %30g %20g %20g %20.6f %10.1f %10d %10d\n", i, "'"+p.Name+"'", p.Mean, p.StdDev, p.MinHere, p.MaxHere, p.Min, p.Max, p.Cpk, p.Good*100.0, p.Ppm, p.MaxCount, p.MinCount)
 		}
 	} else {
 
@@ -225,6 +228,28 @@ func main() {
 		}
 
 	}
+}
+
+func maxcount(m []float64, max float64) int {
+
+	n := 0
+	for i := 0; i < len(m); i++ {
+		if m[i] > max {
+			n++
+		}
+	}
+	return n
+}
+
+func mincount(m []float64, min float64) int {
+
+	n := 0
+	for i := 0; i < len(m); i++ {
+		if m[i] < min {
+			n++
+		}
+	}
+	return n
 }
 
 func Dutycycle(a []float64, t []float64, mid float64) (float64, float64) {
