@@ -139,20 +139,32 @@ func main() {
 
 	// For parameters with min,max calculate additional columns
 	for i, p := range Parameters {
+
+		var cpku, cpkl, badl, badu float64
+
+		norm, err := prob.NewNormal(p.Mean, p.StdDev)
+		if err != nil {
+			log.Println(err.Error())
+			continue
+		}
+
 		if !math.IsNaN(p.Max) {
-			log.Println(p.Mean, p.StdDev, p.Max)
-			Parameters[i].Cpk = (p.Max - p.Mean) / (3.0 * p.StdDev)
-			norm, err := prob.NewNormal(p.Mean, p.StdDev)
-			if err != nil {
-				log.Println(err.Error())
-			} else {
-				bad := (1.0 - norm.Cdf(p.Max)) * 2
-				Parameters[i].Good = 1.0 - bad
-				Parameters[i].Ppm = bad * 1e6
-			}
+			cpku = (p.Max - p.Mean) / (3.0 * p.StdDev)
+			badu = 1.0 - norm.Cdf(p.Max)
 			Parameters[i].MaxCount = maxcount(m[i], p.Max)
+		}
+
+		if !math.IsNaN(p.Min) {
+			cpkl = (p.Mean - p.Min) / (3.0 * p.StdDev)
+			badl = norm.Cdf(p.Min)
 			Parameters[i].MinCount = mincount(m[i], p.Min)
 		}
+
+		bad := badu + badl
+
+		Parameters[i].Cpk = math.Min(cpkl, cpku)
+		Parameters[i].Good = 1.0 - bad
+		Parameters[i].Ppm = bad * 1e6
 	}
 
 	if hist > 0 {
