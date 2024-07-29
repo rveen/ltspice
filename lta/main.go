@@ -43,28 +43,33 @@ func main() {
 	var duty int
 	var header bool
 	var hist int
+	var rms int
+	var data bool
 
 	flag.IntVar(&duty, "d", 0, "Calculate duty cycle of the specified column")
+	flag.IntVar(&rms, "rms", 0, "Calculate the RMS value of the specified column")
 	flag.IntVar(&hist, "hist", 0, "Generate histogram (hist.svg)")
 	flag.BoolVar(&summary, "s", false, "Print summary")
+	flag.BoolVar(&data, "data", false, "Print raw data (use with -rms)")
 	flag.BoolVar(&header, "v", false, "Print header")
 	flag.Float64Var(&upperLimit, "max", 0.0, "Establish the upper limit of the parameter under study")
 	flag.Float64Var(&lowerLimit, "min", 0.0, "Establish the lower limit of the parameter under study")
 	flag.Parse()
 
-	file := ""
-	if len(flag.Args()) > 0 {
-		file = flag.Args()[0]
+	if flag.NArg() == 0 {
+		log.Fatalln("Specify a raw file")
 	}
+
+	file := flag.Arg(0)
 
 	m, vars, err := ltspice.Raw(file)
 
 	if err != nil {
-		log.Println(err)
+		log.Fatalln(err.Error())
 	}
 
 	if m == nil {
-		log.Println("no data matrix found")
+		log.Fatalln("no data matrix found")
 	}
 
 	cols := len(m)
@@ -172,6 +177,11 @@ func main() {
 		return
 	}
 
+	if rms > 0 {
+		Rms(n, m[rms], Parameters[rms], data)
+		return
+	}
+
 	if duty == 0 {
 		if header {
 			fmt.Printf("%-20s %30s %30s %30s %30s %30s %20s %20s %20s %10s %10s %10s\n", "parameter", "mean", "sdev(unbiased)", "min(found)", "max(found)", "min", "max", "cpk", "%ok", "ppm", "Nmax", "Nmin")
@@ -239,6 +249,53 @@ func main() {
 			fmt.Printf("%f, %f, %f, %f, %f, %f, %f\n", mean, lowerLimit, upperLimit, sdev, cpk, good*100.0, ppm)
 		}
 
+	}
+}
+
+func Rms(runs float64, vv []float64, p Parameter, data bool) {
+
+	N := len(vv)
+	nr := int(runs)
+	ns := N / nr
+
+	if !data {
+		fmt.Println(p.Name)
+		fmt.Println(" - runs: ", nr)
+		fmt.Println(" - samples: ", N)
+		fmt.Println(" - samples/run: ", ns)
+	}
+
+	var r float64
+	var rms []float64
+	var k int
+
+	for i := 0; i < nr; i++ {
+		r = 0
+		for j := 0; j < ns; j++ {
+			r += vv[k] * vv[k]
+			k++
+			if data && i == 0 {
+				fmt.Println(vv[k])
+			}
+		}
+		r = math.Sqrt(r / float64(ns))
+		rms = append(rms, r)
+		if data {
+			// fmt.Println(r, ns, k)
+		}
+	}
+
+	if !data {
+		mean := stats.StatsMean(rms)
+		sd := stats.StatsSampleStandardDeviation(rms)
+		max := stats.StatsMax(rms)
+		min := stats.StatsMin(rms)
+
+		tolpos := (max - mean) / mean
+		tolneg := (mean - min) / mean
+		tol := (max - min) / mean / 2 * 100
+
+		fmt.Printf("mean %f, sd %f, min %f, max %f tol +%f-%f tol %f%%\n", mean, sd, min, max, tolpos, tolneg, tol)
 	}
 }
 
