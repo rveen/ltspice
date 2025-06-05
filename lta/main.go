@@ -39,12 +39,8 @@ var lowerLimit = 0.0
 
 func main() {
 
-	var summary bool
-	var duty int
-	var header bool
-	var hist int
-	var rms int
-	var data bool
+	var summary, header, data, csv bool
+	var duty, hist, rms int
 
 	flag.IntVar(&duty, "d", 0, "Calculate duty cycle of the specified column")
 	flag.IntVar(&rms, "rms", 0, "Calculate the RMS value of the specified column")
@@ -52,6 +48,7 @@ func main() {
 	flag.BoolVar(&summary, "s", false, "Print summary")
 	flag.BoolVar(&data, "data", false, "Print raw data (use with -rms)")
 	flag.BoolVar(&header, "v", false, "Print header")
+	flag.BoolVar(&csv, "csv", false, "Print CSV")
 	flag.Float64Var(&upperLimit, "max", 0.0, "Establish the upper limit of the parameter under study")
 	flag.Float64Var(&lowerLimit, "min", 0.0, "Establish the lower limit of the parameter under study")
 	flag.Parse()
@@ -184,7 +181,11 @@ func main() {
 
 	if duty == 0 {
 		if header {
-			fmt.Printf("%-20s %30s %30s %30s %30s %30s %20s %20s %20s %10s %10s %10s\n", "parameter", "mean", "sdev(unbiased)", "min(found)", "max(found)", "min", "max", "cpk", "%ok", "ppm", "Nmax", "Nmin")
+			if csv {
+				fmt.Println("parameter, mean, sdev(unbiased), min(found), max(found), min(spec), max(spec), cpk, %ok, ppm, Nmax, Nmin")
+			} else {
+				fmt.Printf("%-20s %30s %30s %30s %30s %30s %20s %20s %20s %10s %10s %10s\n", "parameter", "mean", "sdev(unbiased)", "min(found)", "max(found)", "min", "max", "cpk", "%ok", "ppm", "Nmax", "Nmin")
+			}
 		}
 
 		for i, p := range Parameters {
@@ -192,8 +193,11 @@ func main() {
 			if i == 0 {
 				continue
 			}
-
-			fmt.Printf("%3d %-20s %30g %30g %30g %30g %30g %20g %20g %20.6f %10.1f %10d %10d\n", i, "'"+p.Name+"'", p.Mean, p.StdDev, p.MinHere, p.MaxHere, p.Min, p.Max, p.Cpk, p.Good*100.0, p.Ppm, p.MaxCount, p.MinCount)
+			if csv {
+				fmt.Printf("%s, %g, %g, %g, %g, %g, %g, %g, %.6f, %.1f, %d, %d\n", "'"+p.Name+"'", p.Mean, p.StdDev, p.MinHere, p.MaxHere, p.Min, p.Max, p.Cpk, p.Good*100.0, p.Ppm, p.MaxCount, p.MinCount)
+			} else {
+				fmt.Printf("%3d %-20s %30g %30g %30g %30g %30g %20g %20g %20.6f %10.1f %10d %10d\n", i, "'"+p.Name+"'", p.Mean, p.StdDev, p.MinHere, p.MaxHere, p.Min, p.Max, p.Cpk, p.Good*100.0, p.Ppm, p.MaxCount, p.MinCount)
+			}
 		}
 	} else {
 
